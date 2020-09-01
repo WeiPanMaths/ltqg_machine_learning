@@ -7,18 +7,18 @@ try:
 except:
   warning("Matplotlib not imported")
 
-ufile =      File('/home/wpan1/Data/PythonProjects/ltqg2/ltqg_b.pvd')
-qfile =      File('/home/wpan1/Data/PythonProjects/ltqg2/ltqg_q.pvd')
-bexactfile = File('/home/wpan1/Data/PythonProjects/ltqg2/ltqg_b_exact.pvd')
-qexactfile = File('/home/wpan1/Data/PythonProjects/ltqg2/ltqg_q_exact.pvd')
+ufile =      File('/home/wpan1/Data/PythonProjects/ltqg3/ltqg_b.pvd')
+qfile =      File('/home/wpan1/Data/PythonProjects/ltqg3/ltqg_q.pvd')
+bexactfile = File('/home/wpan1/Data/PythonProjects/ltqg3/ltqg_b_exact.pvd')
+qexactfile = File('/home/wpan1/Data/PythonProjects/ltqg3/ltqg_q_exact.pvd')
 
-ndump = 10
+ndump = 50
 
 T = 20.0
 t = 0.0
 
 U = Constant(2)
-B = Constant(-2)
+B = Constant(0)
 beta = Constant(2)
 H = Constant(1)
 
@@ -49,6 +49,7 @@ x, = SpatialCoordinate(mesh)
 
 q0.interpolate(sin(2*pi*x))
 b0.interpolate(sin(2*pi*x))
+b0.assign(0)
 
 b_exact.assign(b0)
 q_exact.assign(q0)
@@ -77,15 +78,20 @@ arhs_b = Ab_mass - Dt * (Ab_int + Ab_flux)
 b_problem = LinearVariationalProblem(Ab_mass, action(arhs_b, b1), db1)
 b_solver = LinearVariationalSolver(b_problem)
 
+
 ### q equation #########
 q = TrialFunction(V)
 w = TestFunction(V)
+# forcing = Function(V)
+# forcing.interpolate(2*pi*cos(2*pi*(x-U*t)))
 
 Aq_mass = w * q * dx
-Aq_int = - U * w.dx(0) * q  * dx  - (U-0.5*H)* w * b1.dx(0) * dx  +  (U + B - beta) * w * psi0.dx(0) * dx 
+Aq_int = - U * w.dx(0) * q  * dx  + (U-0.5*H)* w * b1.dx(0) * dx  +  (U + B - beta) * w * psi0.dx(0) * dx  # no ringing
+# Aq_int = - U * w.dx(0) * q  * dx  - (U-0.5*H)* w.dx(0) * b1 * dx  +  (U + B - beta) * w * psi0.dx(0) * dx  # ringing
 Aq_flux = ( U * ( w('+') * normal('+') + w('-')*normal('-') )[0] * avg(q)  + 0.5 * U * jump(w) * jump(q) ) * dS
+# Aq_flux2 = -(U-0.5*H) * ( w('+') * normal('+') + w('-')*normal('-') )[0] * avg(b1) * dS  # ringing correction
 
-arhs_q = Aq_mass - Dt * (Aq_int + Aq_flux) 
+arhs_q = Aq_mass - Dt * (Aq_int + Aq_flux) #- Dt*Aq_flux2
 
 q_problem = LinearVariationalProblem(Aq_mass, action(arhs_q, q1), dq1)
 q_solver = LinearVariationalSolver(q_problem)
